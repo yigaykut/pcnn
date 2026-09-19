@@ -1,0 +1,1889 @@
+{
+  "dsl": "1.0",
+  "project": "pcnn",
+  "scope": "PCNN",
+  "generated": "2026-09-19T09:51:16+00:00",
+  "layers": {
+    "IDENT": 0.9,
+    "DEC": 0.85,
+    "CON": 0.95,
+    "ARC": 0.7,
+    "IMP": 0.5,
+    "DAT": 0.65,
+    "OPS": 0.6,
+    "GOT": 0.8,
+    "TODO": 0.6,
+    "GLO": 0.55,
+    "PAT": 0.7
+  },
+  "edge_types": {
+    "depends_on": "source cannot function without target",
+    "implements": "source is the concrete realisation of target",
+    "constrained_by": "target limits what source may do",
+    "caused_by": "target is the reason source exists",
+    "refines": "source narrows or details target",
+    "instance_of": "source is a specific case of the general target",
+    "contradicts": "source and target cannot both be true",
+    "supersedes": "source replaces target",
+    "blocks": "source prevents target from progressing",
+    "verified_by": "target is the evidence that source holds",
+    "mirrors": "source and target solve the same problem in different projects",
+    "relates_to": "weak fallback association"
+  },
+  "nodes": [
+    {
+      "id": "PCNN.IDENT-001",
+      "head": "PCNN is a retrieval system that keeps project context readable by AI across sessions",
+      "layer": "IDENT",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.95,
+      "pin": true,
+      "signals": [
+        "context-loss",
+        "pcnn",
+        "project-context-neural-network",
+        "purpose",
+        "retrieval"
+      ],
+      "description": "PCNN stores every durable fact about a software project as an atomic neuron with a fixed schema, typed weighted edges to other neurons, and immutable evidence. The primary consumer is a language model resuming work on the project; the human-facing HTML view is a rendering of the same data. PCNN spans several projects at once and links equivalent solutions across them.",
+      "rationale": "Context earned inside one Claude Code session dies with that session, so decisions, rejected alternatives and platform gotchas get re-derived or silently contradicted in the next one.",
+      "alternatives_rejected": "",
+      "anchors": [
+        "README.md",
+        "pcnn/schema.py"
+      ],
+      "evidence": [
+        "P1"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.9
+    },
+    {
+      "id": "PCNN.DEC-001",
+      "head": "The model emits mutations in a closed grammar and never writes neuron files directly",
+      "layer": "DEC",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.98,
+      "pin": false,
+      "signals": [
+        "mutation-grammar",
+        "placeholder-ids",
+        "quarantine",
+        "upsert",
+        "validation"
+      ],
+      "description": "Distillation output is parsed as mutation operations - upsert, link, supersede, touch, raise - each validated against the schema before anything is written. New neurons use $LAYER-n placeholders because the model cannot know which ids are free; the engine allocates real ids and substitutes them. Rejected mutations are written to quarantine/ with the reason and surfaced as a badge in the HTML.",
+      "rationale": "A model writing storage files directly can corrupt the graph in ways nothing detects; a closed grammar with a validator in front makes every bad write visible.",
+      "alternatives_rejected": "letting the model edit neurons/*.md directly; free-form JSON output",
+      "anchors": [
+        "pcnn/distill.py"
+      ],
+      "evidence": [
+        "P6"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.85
+    },
+    {
+      "id": "PCNN.DEC-008",
+      "head": "Sessions report what they learned themselves, so the normal path makes no model call",
+      "layer": "DEC",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.95,
+      "pin": true,
+      "signals": [
+        "contract",
+        "cost",
+        "pcnn-block",
+        "self-report",
+        "session-end",
+        "zero-token"
+      ],
+      "description": "The SessionStart hook injects a contract asking the session to end its closing message with a fenced block in the mutation grammar, between @pcnn and @end. The SessionEnd hook extracts that block with pcnn.reap, validates it and writes the neurons. No model runs at any point in the update path, and the nightly consolidation, audit and render are plain Python. Distillation still exists for backfilling old transcripts and for a session that ended without reporting, but it is off by default in both the nightly task and the session hook, gated behind PCNN_AUTODISTILL.",
+      "rationale": "A session that has just spent an hour in a codebase already knows what it decided and is already writing a closing message, so the marginal cost of ten more lines is nothing. Paying a second model to read the transcript and rediscover those decisions buys the same knowledge twice, and the second copy is worse because it is inferred from evidence rather than remembered.",
+      "alternatives_rejected": "a distillation call per project-day, which cost about 7000 input tokens each even after the prompt was cut by 68 percent; a nightly batch call, which has the same problem at a coarser grain",
+      "anchors": [
+        "hooks/session_end.py",
+        "hooks/session_start.py",
+        "pcnn/reap.py"
+      ],
+      "evidence": [
+        "recap/2026-09-17/zero-token"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.85
+    },
+    {
+      "id": "PCNN.DEC-006",
+      "head": "Distillation runs on haiku and is fed a summarised delta, not the raw one",
+      "layer": "DEC",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.92,
+      "pin": false,
+      "signals": [
+        "commands",
+        "cost",
+        "haiku",
+        "model-choice",
+        "prompt-size",
+        "slim-delta"
+      ],
+      "description": "distill.slim_delta builds a prompt-sized view of a delta: shell commands become bucket counts plus the twenty most repeated, truncated to 120 characters; instructions and failures are capped; files read are dropped entirely. The invariants arrive as one line per neuron instead of in full, so prompt cost stays flat as a network grows. Measured on one real day of the invest project, the prompt fell from 25,363 to 7,322 input tokens, and the model is haiku rather than a frontier model.",
+      "rationale": "Verbatim shell commands were 67 percent of the payload and the least useful signal in it, because what a session decided lives in its closing recap, its file changes and its failures. Distillation is structured extraction against a closed grammar with a validator behind it, which a frontier model does no better and charges roughly ten times as much for.",
+      "alternatives_rejected": "sending the raw delta; trimming the delta on disk, which would destroy the evidence the neuron is audited against",
+      "anchors": [
+        "pcnn/distill.py"
+      ],
+      "evidence": [
+        "recap/2026-09-17/cost"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.85
+    },
+    {
+      "id": "PCNN.DEC-002",
+      "head": "Eleven layers share three validated hues, distinguished by node shape",
+      "layer": "DEC",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.9,
+      "pin": false,
+      "signals": [
+        "categorical",
+        "colour-vision",
+        "composite-encoding",
+        "legend",
+        "palette",
+        "shapes"
+      ],
+      "description": "The eleven neuron layers are grouped into three families - intent, structure, experience - each carrying one of the three hues that clear the all-pairs colour-vision floor in both light and dark mode. The specific layer is carried by node shape: circle, square, diamond, triangle or hexagon. Every layer appears in the legend with both its hue and its shape, and node labels are drawn on the canvas.",
+      "rationale": "A categorical palette may not be cycled or extended with generated hues; testing showed only three of the documented hues clear the all-pairs separation floor, so the remaining distinction has to be carried by a second visual channel.",
+      "alternatives_rejected": "eleven distinct hues; four hues including violet, magenta, red or yellow, all of which failed the dark-mode separation check",
+      "anchors": [
+        "pcnn/render.py",
+        "pcnn/templates/network.html.tmpl"
+      ],
+      "evidence": [
+        "P7"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.85
+    },
+    {
+      "id": "PCNN.DEC-004",
+      "head": "Weight is drawn as distance from the core, not as node size",
+      "layer": "DEC",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.9,
+      "pin": false,
+      "signals": [
+        "radial-layout",
+        "rings",
+        "sacred-geometry",
+        "salience-encoding",
+        "visual-language"
+      ],
+      "description": "The HTML view is a radial field whose concentric rings are weight bands. Radius follows weight rank rather than weight value, so every shell fills evenly even though the network is top-heavy, while the order stays exact: nearer the core is always heavier. Ring captions report the real weight at each boundary. Angle is assigned by golden-angle phyllotaxis over rank order, and the edge springs are weak enough only to bend a neuron towards its neighbours, so the same network always draws the same picture.",
+      "rationale": "The single promise the system makes is that weight never decays, so the view puts weight in the one channel that cannot be skimmed past. Mapping weight value directly to radius emptied the outer shells, and letting forces choose the angle pulled every neuron towards whichever hub it was tied to until the field collapsed into one clump and stopped reading as a network at all.",
+      "alternatives_rejected": "free force-directed placement with size alone carrying salience; a linear weight-to-radius map; force-negotiated angles",
+      "anchors": [
+        "pcnn/render.py",
+        "pcnn/templates/network.html.tmpl"
+      ],
+      "evidence": [
+        "recap/2026-09-17/design"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.85
+    },
+    {
+      "id": "PCNN.DEC-009",
+      "head": "The nightly pass runs only on days a session was actually opened",
+      "layer": "DEC",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "stated",
+      "salience": 0.88,
+      "pin": false,
+      "signals": [
+        "activity-gate",
+        "nightly",
+        "quiet-day",
+        "scheduled-task",
+        "transcript-mtime"
+      ],
+      "description": "scripts/nightly.py asks pcnn.activity.anything_happened before doing any work and stands down when the answer is no. The signal is the Claude Code transcript itself: a file under the transcript root whose modification time falls on the day in question, and whose folder name matches a registered project. A session that opened and changed nothing still counts, because the question is whether a session happened rather than whether it was productive. The --force switch overrides the gate.",
+      "rationale": "Running on a day nobody worked rewrites four HTML files to say exactly what they said yesterday and writes a log line that means nothing, which makes the log harder to read on the days it matters.",
+      "alternatives_rejected": "gating on whether a recap was written, which misses a session that opened and changed nothing",
+      "anchors": [
+        "pcnn/activity.py",
+        "scripts/nightly.py"
+      ],
+      "evidence": [
+        "self/2026-09-18/schedule"
+      ],
+      "first_seen": "2026-09-18",
+      "last_touched": "2026-09-18",
+      "revision": 1,
+      "note": "",
+      "floor": 0.85
+    },
+    {
+      "id": "PCNN.DEC-005",
+      "head": "The view ships one dark surface with pigments validated against true black",
+      "layer": "DEC",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.87,
+      "pin": false,
+      "signals": [
+        "brass",
+        "contrast-validation",
+        "dark-only",
+        "iris",
+        "palette",
+        "true-black",
+        "verdigris"
+      ],
+      "description": "The surface is #000000 rather than a tinted near-black, and the three family hues are brass #b4862f, verdigris #27a08c and iris #8e79ef. The triad was run through the colour-vision validator against that surface: worst all-pairs CVD delta E 11.3 and worst normal-vision delta E 17.0, both clear of their floors. There is no light theme and no theme toggle.",
+      "rationale": "A second theme would need its own validated steps and doubles the surface the design has to hold together, for a page that is read as an instrument rather than as a document.",
+      "alternatives_rejected": "gold #d4af37 and #c9a227, both above the dark-mode lightness band; a four-hue palette adding violet, magenta, red or yellow, each of which failed all-pairs separation",
+      "anchors": [
+        "pcnn/templates/network.html.tmpl"
+      ],
+      "evidence": [
+        "recap/2026-09-17/design"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.85
+    },
+    {
+      "id": "PCNN.DEC-003",
+      "head": "Nightly consolidation runs as a Windows scheduled task, not a cloud routine",
+      "layer": "DEC",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.86,
+      "pin": false,
+      "signals": [
+        "consolidation",
+        "cron",
+        "local-execution",
+        "nightly",
+        "scheduled-task"
+      ],
+      "description": "scripts/nightly.py runs pcnn distill, consolidate and audit across every network, registered by scripts/install-nightly.ps1 as a daily Windows scheduled task at 23:30. The -NoDistill switch skips the model call so the free half can run on its own.",
+      "rationale": "A scheduled cloud agent executes remotely and cannot reach the networks, the session transcripts or the rendered HTML, all of which are on this machine.",
+      "alternatives_rejected": "a scheduled cloud agent via the schedule skill; a /loop session, which only lasts as long as the session does",
+      "anchors": [
+        "scripts/install-nightly.ps1",
+        "scripts/nightly.py"
+      ],
+      "evidence": [
+        "recap/2026-09-17/build"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.85
+    },
+    {
+      "id": "PCNN.DEC-007",
+      "head": "Running pcnn with no arguments prints the dashboard and costs nothing",
+      "layer": "DEC",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.86,
+      "pin": false,
+      "signals": [
+        "cli",
+        "dashboard",
+        "ergonomics",
+        "no-args",
+        "one-command"
+      ],
+      "description": "python -m pcnn with no subcommand reports every project's fact count, how many days are waiting, whether anything needs a look, how many model calls today has spent against the ceiling, and the path to the rendered view. It is read-only and makes no model call. Every other command remains available but none is needed day to day, because the hooks and the nightly task do the work.",
+      "rationale": "A context system that requires a remembered sequence of commands is a system that stops being used, and the whole point is that the human does not maintain it.",
+      "alternatives_rejected": "requiring pcnn status, pcnn audit and pcnn render to be run separately to learn the same things",
+      "anchors": [
+        "pcnn/cli.py"
+      ],
+      "evidence": [
+        "recap/2026-09-17/cost"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.85
+    },
+    {
+      "id": "PCNN.CON-001",
+      "head": "Salience never decreases automatically; only an explicit human demote lowers it",
+      "layer": "CON",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 1.0,
+      "pin": true,
+      "signals": [
+        "decay",
+        "demote",
+        "floor",
+        "never-lose-weight",
+        "salience",
+        "weight"
+      ],
+      "description": "Every automated path - distillation, consolidation, touch boosts - may raise a neuron's salience and may never lower it. Lowering requires the pcnn demote command, which refuses without a written reason and refuses to go below the layer floor. There is no recency decay anywhere in the engine; last_touched feeds the timeline view only.",
+      "rationale": "Recency decay is the standard design and it is precisely how old context gets lost: a decision taken on day one must not fade because nobody touched it for a month.",
+      "alternatives_rejected": "exponential recency decay on salience; automatic pruning of low-traffic neurons",
+      "anchors": [
+        "pcnn/schema.py",
+        "pcnn/weights.py"
+      ],
+      "evidence": [
+        "P2"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.95
+    },
+    {
+      "id": "PCNN.CON-002",
+      "head": "Facts are superseded, never deleted or shortened",
+      "layer": "CON",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 1.0,
+      "pin": true,
+      "signals": [
+        "deletion",
+        "immutability",
+        "retired",
+        "shrink-guard",
+        "supersede"
+      ],
+      "description": "A fact that changes gets status superseded plus a supersedes edge from its replacement, and stays on disk and on the canvas drawn hollow. A rewrite that drops more than 40 percent of an existing description, or drops an existing rationale, is rejected into quarantine rather than applied. INVARIANTS.md carries a RETIRED section so a later session cannot rediscover and re-adopt an abandoned approach.",
+      "rationale": "Summarisation is the failure mode PCNN exists to prevent, so the storage layer has to make information loss structurally impossible rather than merely discouraged.",
+      "alternatives_rejected": "rewriting neurons in place; deleting obsolete neurons",
+      "anchors": [
+        "pcnn/distill.py",
+        "pcnn/store.py"
+      ],
+      "evidence": [
+        "P2",
+        "P3"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.95
+    },
+    {
+      "id": "PCNN.CON-005",
+      "head": "The pipeline never harvests its own sessions",
+      "layer": "CON",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.98,
+      "pin": true,
+      "signals": [
+        "feedback-loop",
+        "guard",
+        "pcnn-internal",
+        "runaway-cost",
+        "self-harvest",
+        "session-end"
+      ],
+      "description": "Two guards stop the distiller from feeding on its own output. First, distill.run_model sets PCNN_INTERNAL=1 on the headless claude -p call, and hooks/session_end.py exits immediately when that variable is present. Second, ingest.is_pipeline_output rejects any delta that changed no file, ran no command and whose closing message begins with @mutation, which catches a pipeline session the environment guard missed.",
+      "rationale": "The headless model call runs as an ordinary Claude Code session in the registered orchestrator directory, so without a guard the SessionEnd hook harvests it, distils it, and that distillation is harvested in turn. The loop spends tokens without limit and writes the distiller's own prompt into the network as if it were a fact about the project. Seven such deltas accumulated on 2026-09-17 before the guards existed.",
+      "alternatives_rejected": "unregistering the orchestrator so its sessions are ignored, which would also stop PCNN from recording its own development; matching on the session transcript path, which breaks as soon as the transcript location changes",
+      "anchors": [
+        "hooks/session_end.py",
+        "pcnn/distill.py",
+        "pcnn/ingest.py"
+      ],
+      "evidence": [
+        "recap/2026-09-17/loop"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.95
+    },
+    {
+      "id": "PCNN.CON-006",
+      "head": "The pipeline's own spending is capped and measured, never assumed",
+      "layer": "CON",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.96,
+      "pin": true,
+      "signals": [
+        "budget",
+        "cost-control",
+        "daily-limit",
+        "haiku",
+        "ledger",
+        "token-cost"
+      ],
+      "description": "Every model call is charged against a daily ceiling of 30 calls across all projects, held in .budget.json and raised with PCNN_DAILY_CALLS. When the ceiling is reached the pipeline stops and says so, and the undistilled deltas wait on disk. Harvest costs nothing because no model runs in it, a day that changed no file and hit no failure is skipped without a call, and pcnn cost prints what has actually been charged.",
+      "rationale": "PCNN exists to spend fewer tokens than re-deriving context does, so a system that could spend without limit defeats its own purpose. The self-distillation loop of 2026-09-17 proved that an unbounded pipeline exhausts a usage limit in minutes.",
+      "alternatives_rejected": "trusting the guards alone with no ceiling behind them",
+      "anchors": [
+        "pcnn/budget.py",
+        "pcnn/cli.py"
+      ],
+      "evidence": [
+        "recap/2026-09-17/cost"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.95
+    },
+    {
+      "id": "PCNN.CON-003",
+      "head": "The xprj scope is never registered with a filesystem path",
+      "layer": "CON",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.95,
+      "pin": false,
+      "signals": [
+        "cross-project",
+        "registry",
+        "resolve-path",
+        "scope",
+        "xprj"
+      ],
+      "description": "networks/xprj holds cross-project neurons and has no source directory. Giving it a registry path made Registry.resolve_path attribute any unregistered directory under that path to the cross-project network, so xprj is kept out of registry.json entirely and added to --all targets explicitly by pcnn.cli._targets.",
+      "rationale": "resolve_path does longest-prefix matching, so a broad registered path silently captures every project below it that is not itself registered.",
+      "alternatives_rejected": "registering xprj against the Desktop directory",
+      "anchors": [
+        "pcnn/cli.py",
+        "registry.json"
+      ],
+      "evidence": [
+        "recap/2026-09-17/build"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.95
+    },
+    {
+      "id": "PCNN.CON-004",
+      "head": "The rendered view loads no font, script or stylesheet over the network",
+      "layer": "CON",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.95,
+      "pin": false,
+      "signals": [
+        "cdn",
+        "font-stack",
+        "offline",
+        "self-contained",
+        "typography",
+        "webfont"
+      ],
+      "description": "Typography uses a font stack of faces already present on the machine: Constantia and Palatino Linotype for reading, Century Gothic for controls, each with documented fallbacks. No webfont is fetched and no font is embedded.",
+      "rationale": "The output has to open from disk years from now with no network, which a Google Fonts link silently breaks and an embedded font pays for in file size on every render.",
+      "alternatives_rejected": "Cormorant Garamond and Jost from Google Fonts; base64-embedding both families into every rendered page",
+      "anchors": [
+        "pcnn/templates/network.html.tmpl"
+      ],
+      "evidence": [
+        "recap/2026-09-17/design"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.95
+    },
+    {
+      "id": "PCNN.ARC-002",
+      "head": "Three ways in - a session reports itself, a harvest records it, a model reads it only if asked",
+      "layer": "ARC",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.92,
+      "pin": false,
+      "signals": [
+        "distill",
+        "harvest",
+        "hooks",
+        "pipeline",
+        "self-report",
+        "session-end",
+        "two-stage",
+        "zero-token"
+      ],
+      "description": "Stage A parses the Claude Code session transcript with no model involved and writes a raw delta listing files changed, commands run, verbatim user instructions and failures. The normal update path then costs nothing further: the session fenced what it learned between @pcnn and @end in its closing message, and the SessionEnd hook validates that block and writes the neurons. Stage B, a headless model call that reads the delta and infers the same facts, remains available for backfilling old transcripts and for a session that ended without reporting, but it is off by default in both the nightly task and the session hook. Stage A is free and cannot hallucinate; Stage B is the only step that costs tokens and the only step that can be wrong.",
+      "rationale": "Splitting the pipeline means a failed or skipped distillation still leaves the session fully recorded on disk, so nothing is ever unrecoverable. Putting the self-report ahead of distillation means the usual case never pays a model at all, because the session that did the work is the cheapest and most reliable witness to it.",
+      "alternatives_rejected": "distilling every harvested day by default, which paid a model to rediscover what the session already knew",
+      "anchors": [
+        "hooks/session_end.py",
+        "hooks/session_start.py",
+        "pcnn/distill.py",
+        "pcnn/ingest.py",
+        "pcnn/reap.py"
+      ],
+      "evidence": [
+        "P5",
+        "recap/2026-09-17/zero-token"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 2,
+      "note": "",
+      "floor": 0.7
+    },
+    {
+      "id": "PCNN.ARC-001",
+      "head": "Three read tiers - MAP.md to navigate, neurons to read, evidence to audit",
+      "layer": "ARC",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.9,
+      "pin": true,
+      "signals": [
+        "l0",
+        "l1",
+        "l2",
+        "map",
+        "navigation",
+        "read-tiers",
+        "token-budget"
+      ],
+      "description": "L0 is MAP.md, one line per neuron, loaded every session. L1 is neurons/<id>--<slug>.md, the canonical fact in full, opened on demand. L2 is the evidence and recap material, read only when auditing. The tiers exist so token cost falls without any knowledge being compressed away.",
+      "rationale": "",
+      "alternatives_rejected": "",
+      "anchors": [
+        "pcnn/store.py"
+      ],
+      "evidence": [
+        "P4"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.7
+    },
+    {
+      "id": "PCNN.IMP-001",
+      "head": "Retrieval is spreading activation over the graph, returning the path that matched",
+      "layer": "IMP",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.72,
+      "pin": false,
+      "signals": [
+        "hops",
+        "query",
+        "ranking",
+        "retrieval",
+        "seeds",
+        "spreading-activation"
+      ],
+      "description": "Query terms seed neurons through signals, head, anchors and id matches with activation equal to their salience, then activation propagates along edges for up to three hops at 0.6 decay per hop and 0.8 for traversing an edge backwards. Results above the cutoff are ranked and returned with the activation path, so a neuron no query term touched can still surface because a decision two hops away depends on it.",
+      "rationale": "",
+      "alternatives_rejected": "",
+      "anchors": [
+        "pcnn/query.py"
+      ],
+      "evidence": [
+        "P8"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.5
+    },
+    {
+      "id": "PCNN.IMP-002",
+      "head": "The HTML view is a single self-contained file with a hand-written force layout",
+      "layer": "IMP",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.66,
+      "pin": false,
+      "signals": [
+        "canvas",
+        "force-directed",
+        "html",
+        "offline",
+        "output",
+        "renderer"
+      ],
+      "description": "pcnn/render.py injects a JSON payload into pcnn/templates/network.html.tmpl, which carries its own simulation, canvas renderer, filters, table view, timeline and path finder. No CDN, no build step and no vendored library, so the output still opens from disk years later.",
+      "rationale": "",
+      "alternatives_rejected": "",
+      "anchors": [
+        "pcnn/render.py",
+        "pcnn/templates/network.html.tmpl"
+      ],
+      "evidence": [
+        "P7"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.5
+    },
+    {
+      "id": "PCNN.DAT-002",
+      "head": "A self-report is fenced between @pcnn and @end so it cannot be confused with distiller output",
+      "layer": "DAT",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.8,
+      "pin": false,
+      "signals": [
+        "block-delimiter",
+        "disambiguation",
+        "grammar",
+        "pcnn-fence",
+        "self-report"
+      ],
+      "description": "A session reports inside @pcnn and @end. A distillation run emits a bare mutation block with no fence. ingest.is_pipeline_output treats a fenced block as a real session reporting and a bare one as the pipeline talking to itself, which keeps the self-report path and the loop guard from colliding. Only the last block in a message is read, so a session that revises its report supersedes its own earlier draft.",
+      "rationale": "",
+      "alternatives_rejected": "",
+      "anchors": [
+        "pcnn/ingest.py",
+        "pcnn/reap.py"
+      ],
+      "evidence": [
+        "recap/2026-09-17/zero-token"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.65
+    },
+    {
+      "id": "PCNN.DAT-003",
+      "head": "A wrong edge is removed with @mutation unlink; neurons and weights stay permanent",
+      "layer": "DAT",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "stated",
+      "salience": 0.78,
+      "pin": false,
+      "signals": [
+        "correction",
+        "edge-removal",
+        "mistake",
+        "mutation-grammar",
+        "unlink"
+      ],
+      "description": "The mutation grammar carries @mutation unlink SRC -> DST : type, which drops one edge from a neuron and logs the removal. It refuses when no such edge exists. Every other operation in PCNN is additive because a fact that was true stays true, but an edge asserts a relationship between two facts and an assertion can simply be wrong.",
+      "rationale": "The gap surfaced when a supersedes edge was written where refines was meant and there was no way to take it back, which would have left the graph permanently asserting that a live architecture neuron had been retired.",
+      "alternatives_rejected": "",
+      "anchors": [
+        "pcnn/distill.py",
+        "prompts/DISTILL_RECAP.md"
+      ],
+      "evidence": [
+        "recap/2026-09-17/zero-token"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-18",
+      "revision": 2,
+      "note": "",
+      "floor": 0.65
+    },
+    {
+      "id": "PCNN.DAT-005",
+      "head": "A wrong edge is removed with @mutation unlink; neurons and weights stay permanent",
+      "layer": "DAT",
+      "project": "pcnn",
+      "status": "superseded",
+      "confidence": "stated",
+      "salience": 0.78,
+      "pin": false,
+      "signals": [
+        "correction",
+        "edge-removal",
+        "mistake",
+        "mutation-grammar",
+        "unlink"
+      ],
+      "description": "The mutation grammar carries @mutation unlink SRC -> DST : type, which drops one edge from a neuron and logs the removal. It refuses when no such edge exists. Every other operation in PCNN is additive because a fact that was true stays true, but an edge asserts a relationship between two facts and an assertion can simply be wrong.",
+      "rationale": "The gap surfaced when a supersedes edge was written where refines was meant and there was no way to take it back, which would have left the graph permanently asserting that a live architecture neuron had been retired.",
+      "alternatives_rejected": "",
+      "anchors": [
+        "pcnn/distill.py",
+        "prompts/DISTILL_RECAP.md"
+      ],
+      "evidence": [
+        "recap/2026-09-17/zero-token"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-18",
+      "revision": 1,
+      "note": "",
+      "floor": 0.65
+    },
+    {
+      "id": "PCNN.DAT-001",
+      "head": "Neuron ids are SCOPE.LAYER-NNN and are never reused, even after a merge",
+      "layer": "DAT",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.75,
+      "pin": false,
+      "signals": [
+        "changelog",
+        "identifier",
+        "neuron-id",
+        "next-id",
+        "scope"
+      ],
+      "description": "A neuron id is the uppercased project slug, a dot, the three or four letter layer code, a hyphen and a zero-padded number, for example PCNN.DEC-002. Allocation scans both the live neurons and the changelog so an id belonging to a merged or superseded neuron is never handed out again.",
+      "rationale": "",
+      "alternatives_rejected": "",
+      "anchors": [
+        "pcnn/schema.py",
+        "pcnn/store.py"
+      ],
+      "evidence": [
+        "P9"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.65
+    },
+    {
+      "id": "PCNN.DAT-004",
+      "head": "Claude Code names a transcript folder by replacing every non-alphanumeric character with a hyphen",
+      "layer": "DAT",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "stated",
+      "salience": 0.72,
+      "pin": false,
+      "signals": [
+        "naming",
+        "non-ascii",
+        "path-encoding",
+        "slug",
+        "transcript-folder"
+      ],
+      "description": "A working directory maps to its transcript folder by replacing every character that is not a letter or a digit with a hyphen. The drive colon, both path separators, the space and any non-ASCII letter all collapse the same way, so C:\\\\Users\\\\MSI\\\\OneDrive\\\\ Desktop\\\\project orchestrator is stored as C--Users-ME--OneDrive-Desktop-project- orchestrator. Matching a project to its transcripts requires the resolved path, not the one the registry happens to hold.",
+      "rationale": "An earlier guess that only the colon and separators were replaced silently found zero sessions on a machine whose user name carries a Turkish dotted I.",
+      "alternatives_rejected": "",
+      "anchors": [
+        "pcnn/activity.py"
+      ],
+      "evidence": [
+        "self/2026-09-18/schedule"
+      ],
+      "first_seen": "2026-09-18",
+      "last_touched": "2026-09-18",
+      "revision": 1,
+      "note": "",
+      "floor": 0.65
+    },
+    {
+      "id": "PCNN.OPS-005",
+      "head": "pcnn distill takes --limit so a first run on a backlog is not one model call per day",
+      "layer": "OPS",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.74,
+      "pin": false,
+      "signals": [
+        "backlog",
+        "cli",
+        "cost-control",
+        "distill",
+        "limit"
+      ],
+      "description": "pcnn distill processes every pending delta by default, which on a freshly harvested project is one model call per calendar day of history. The invest backlog was 22 deltas on first harvest. --limit N stops after N deltas and reports how many remain; the nightly job leaves it unset on purpose.",
+      "rationale": "",
+      "alternatives_rejected": "",
+      "anchors": [
+        "pcnn/cli.py"
+      ],
+      "evidence": [
+        "recap/2026-09-17/loop"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.6
+    },
+    {
+      "id": "PCNN.OPS-002",
+      "head": "Both hooks are registered in the user settings file in exec form",
+      "layer": "OPS",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.72,
+      "pin": false,
+      "signals": [
+        "args",
+        "exec-form",
+        "hook-registration",
+        "install",
+        "settings-json"
+      ],
+      "description": "SessionStart and SessionEnd entries in the Claude Code user settings file use command \"python\" with the script path in args, so the path is spawned directly instead of being parsed by a shell. Removing the two entries from that file disables the whole automatic update pipeline without touching the repository.",
+      "rationale": "",
+      "alternatives_rejected": "",
+      "anchors": [
+        "README.md"
+      ],
+      "evidence": [
+        "recap/2026-09-17/build"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.6
+    },
+    {
+      "id": "PCNN.OPS-003",
+      "head": "The invest project is the second PCNN network, populated by distillation on 2026-09-17",
+      "layer": "OPS",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.72,
+      "pin": false,
+      "signals": [
+        "invest",
+        "multi project",
+        "network population",
+        "onboarding",
+        "second project",
+        "stock screener"
+      ],
+      "description": "A network for the invest project exists alongside pcnn and was populated on 2026-09-17 by running the distillation step over the invest session transcript at C--Users-ME--OneDrive-Desktop-invest\\1ba99976-dc23-4ebe-ae08-ad19f0ecfeb9.jsonl. The run emitted IDENT, ARC, DAT, DEC and CON neurons covering the invest pipeline, its weights configuration and its scoring rules, which demonstrates the harvest-then-distil path end to end on a project other than pcnn itself.",
+      "rationale": "",
+      "alternatives_rejected": "",
+      "anchors": [
+        "pcnn/distill.py",
+        "registry.json"
+      ],
+      "evidence": [
+        "recap/session-dab5f42b-5451-426f-8072-19d89fa320d3"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.6
+    },
+    {
+      "id": "PCNN.OPS-004",
+      "head": "The invest project is the second PCNN network, populated by distillation on 2026-09-17",
+      "layer": "OPS",
+      "project": "pcnn",
+      "status": "superseded",
+      "confidence": "stated",
+      "salience": 0.72,
+      "pin": false,
+      "signals": [
+        "invest",
+        "multi project",
+        "network population",
+        "onboarding",
+        "registry",
+        "second project"
+      ],
+      "description": "A network for the invest project exists alongside the pcnn network and was populated on 2026-09-17 by running the distillation step over the invest session transcript under C--Users-ME--OneDrive-Desktop-invest. That run emitted IDENT, ARC, DAT, DEC and CON neurons covering the invest pipeline, its weights configuration and its scoring rules, which exercises the harvest-then-distil path end to end on a project other than pcnn itself.",
+      "rationale": "",
+      "alternatives_rejected": "",
+      "anchors": [
+        "pcnn/distill.py",
+        "registry.json"
+      ],
+      "evidence": [
+        "recap/session-7a9e020c-46ee-4afe-9824-af8f301a81a0"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.6
+    },
+    {
+      "id": "PCNN.OPS-001",
+      "head": "Everything runs through python -m pcnn with no third-party dependencies",
+      "layer": "OPS",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.7,
+      "pin": false,
+      "signals": [
+        "cli",
+        "commands",
+        "entry-point",
+        "install",
+        "stdlib"
+      ],
+      "description": "The engine is Python 3 standard library only. Commands are init, status, validate, rebuild, query, context, harvest, distill, apply, audit, consolidate, render, demote and suggest. PCNN_HOME overrides the orchestrator root when the package is run from elsewhere, which is what the session hooks rely on.",
+      "rationale": "",
+      "alternatives_rejected": "",
+      "anchors": [
+        "pcnn/cli.py"
+      ],
+      "evidence": [
+        "P10"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.6
+    },
+    {
+      "id": "PCNN.OPS-006",
+      "head": "The nightly run ends with one Windows toast and leaves nothing resident",
+      "layer": "OPS",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "stated",
+      "salience": 0.7,
+      "pin": false,
+      "signals": [
+        "notification",
+        "powershell",
+        "residency",
+        "scheduled-task",
+        "toast",
+        "winrt"
+      ],
+      "description": "scripts/notify.ps1 hands a toast to the shell through the WinRT notification API, which needs nothing installed, and exits. Clicking the toast opens output/ network.html through protocol activation. The whole nightly pass measured six seconds end to end and left no process behind, so nothing occupies memory between runs. A toast that cannot be shown, because notifications are off or Focus Assist is on, is swallowed rather than allowed to fail the run.",
+      "rationale": "",
+      "alternatives_rejected": "",
+      "anchors": [
+        "pcnn/cli.py",
+        "scripts/nightly.py",
+        "scripts/notify.ps1"
+      ],
+      "evidence": [
+        "self/2026-09-18/schedule"
+      ],
+      "first_seen": "2026-09-18",
+      "last_touched": "2026-09-18",
+      "revision": 1,
+      "note": "",
+      "floor": 0.6
+    },
+    {
+      "id": "PCNN.GOT-006",
+      "head": "A distillation run is itself harvested, yielding a self-referential delta whose recap is a mutation block",
+      "layer": "GOT",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.92,
+      "pin": false,
+      "signals": [
+        "distillation delta",
+        "empty delta",
+        "feedback loop",
+        "recap",
+        "self referential",
+        "session end hook"
+      ],
+      "description": "The distillation step runs as a Claude Code session whose working directory is the registered orchestrator directory, so the SessionEnd hook harvests the distillation run itself as an ordinary session. The delta produced this way carries zero file changes, zero commands, zero reads and zero failures, exactly one user instruction which is the distillation task prompt verbatim, and a recap field that is the mutation block emitted for whichever project was being distilled. Such a delta describes the distiller, not the project it names, and its instruction text must never be recorded as project work.",
+      "rationale": "Distilling a distillation delta at face value copies another project's neurons into the pcnn network and stores the prompt template as if it were a session decision, so the shape - one instruction, empty change lists, a recap starting with @mutation - has to be recognised before the content is trusted.",
+      "alternatives_rejected": "reading the recap field as a project recap regardless of its content; treating the distillation prompt as a user instruction that sets project rules",
+      "anchors": [
+        "hooks/session_end.py",
+        "pcnn/distill.py",
+        "pcnn/ingest.py"
+      ],
+      "evidence": [
+        "recap/session-7a9e020c-46ee-4afe-9824-af8f301a81a0"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.8
+    },
+    {
+      "id": "PCNN.GOT-009",
+      "head": "The SessionEnd hook wrote a self-report into a Network it had never loaded",
+      "layer": "GOT",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "stated",
+      "salience": 0.9,
+      "pin": false,
+      "signals": [
+        "derived-files",
+        "empty-network",
+        "hook",
+        "init",
+        "load",
+        "map-wipe"
+      ],
+      "description": "hooks/session_end.py called Network.init(), which only creates directories, and then applied the session's self-report against it. With no neurons in memory every link to an existing neuron was rejected as unknown, and the rebuild that followed wrote a MAP.md containing one neuron over a map of thirty-seven. The neuron files on disk were untouched, so a single rebuild restored everything.",
+      "rationale": "Nothing was lost because neurons are the source of truth and MAP.md, INVARIANTS and graph.json are derived from them, which is the reason they are kept apart. The fix is two-sided: the hook now loads before applying, and Network.rebuild re-reads the directory whenever it holds more neurons than the instance does, so no caller can overwrite a map with a stale view of it again.",
+      "alternatives_rejected": "fixing only the hook, which would leave the same trap for the next caller that forgets",
+      "anchors": [
+        "hooks/session_end.py",
+        "pcnn/store.py"
+      ],
+      "evidence": [
+        "self/2026-09-17/hook-run"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.8
+    },
+    {
+      "id": "PCNN.GOT-003",
+      "head": "One Claude Code session can span weeks, so a raw delta must be split per calendar day",
+      "layer": "GOT",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.89,
+      "pin": false,
+      "signals": [
+        "cursor",
+        "day-split",
+        "delta-size",
+        "incremental-harvest",
+        "prompt-size",
+        "session-length"
+      ],
+      "description": "The invest transcript covers 2026-08-11 to 2026-09-17 in a single session and produced a 2 MB delta with 496 instructions and 2695 commands, far too large to use as a distillation prompt. Harvesting now buckets records by calendar day, folds repeated commands into one entry with a repeat count, caps each list per day, and records a line cursor per transcript so a re-fired SessionEnd hook never re-emits a day already written.",
+      "rationale": "Delta size is bounded by the day rather than by the session, which both fits a prompt and matches how the network is meant to be read - what changed on which day.",
+      "alternatives_rejected": "one delta per session (unbounded); truncating the newest records (drops exactly the conclusions worth keeping)",
+      "anchors": [
+        "pcnn/ingest.py"
+      ],
+      "evidence": [
+        "recap/2026-09-17/build"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.8
+    },
+    {
+      "id": "PCNN.GOT-002",
+      "head": "Hook stdin must be decoded as UTF-8 explicitly or non-ASCII paths are mangled",
+      "layer": "GOT",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.88,
+      "pin": false,
+      "signals": [
+        "codepage",
+        "encoding",
+        "hook-stdin",
+        "non-ascii-path",
+        "turkish",
+        "utf-8",
+        "windows"
+      ],
+      "description": "Reading a hook payload with sys.stdin.read() on Windows decodes it with the console codepage, which turned the orchestrator path <home>\\... into a mangled string and made Registry.resolve_path return no project, so both hooks silently did nothing. Both hooks now read sys.stdin.buffer and decode UTF-8 with errors=\"replace\".",
+      "rationale": "Claude Code writes hook payloads as UTF-8 regardless of the console codepage, and the failure is silent - the hook exits 0 and logs that it found no project, which looks identical to a correctly ignored unregistered directory.",
+      "alternatives_rejected": "setting PYTHONUTF8 in the hook command (does not travel with the repository and is easy to lose)",
+      "anchors": [
+        "hooks/session_end.py",
+        "hooks/session_start.py"
+      ],
+      "evidence": [
+        "recap/2026-09-17/build"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.8
+    },
+    {
+      "id": "PCNN.GOT-005",
+      "head": "A distillation run is itself a harvested session, producing a self-referential delta whose recap is a mutation block",
+      "layer": "GOT",
+      "project": "pcnn",
+      "status": "superseded",
+      "confidence": "inferred",
+      "salience": 0.88,
+      "pin": false,
+      "signals": [
+        "distillation delta",
+        "empty delta",
+        "feedback loop",
+        "recap",
+        "self referential",
+        "session end hook"
+      ],
+      "description": "The distillation call runs as a Claude Code session whose working directory is the registered orchestrator directory, so the SessionEnd hook harvests the distillation run as an ordinary session. The resulting delta for 2026-09-17 carries zero file changes, zero commands and zero failures, one user instruction that is the distillation task prompt itself, and a recap that is the mutation block emitted for a different project. Such a delta describes the distiller, not the project, and its recap must not be read as evidence about the project being distilled.",
+      "rationale": "Distilling a distillation delta would copy another project's neurons into the pcnn network and record the prompt text as if it were project work, so the shape has to be recognised before the content is trusted.",
+      "alternatives_rejected": "treating the recap field as a project recap regardless of its content",
+      "anchors": [
+        "hooks/session_end.py",
+        "pcnn/distill.py",
+        "pcnn/ingest.py"
+      ],
+      "evidence": [
+        "recap/session-dab5f42b-5451-426f-8072-19d89fa320d3"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.8
+    },
+    {
+      "id": "PCNN.GOT-010",
+      "head": "A self-report can be written well before a session's last three messages",
+      "layer": "GOT",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "stated",
+      "salience": 0.86,
+      "pin": false,
+      "signals": [
+        "last-three",
+        "recap-window",
+        "scan",
+        "self-report",
+        "tail"
+      ],
+      "description": "The recap field holds only the final three assistant messages of a day, so a block written before a long tail of follow-up work falls out of it. Harvesting now scans every assistant message of the day for a fenced block and stores the last one in the delta's self_report field, which the hook reads before falling back to the recap.",
+      "rationale": "The failure is silent in exactly the wrong way: the session reports correctly, the hook finds nothing, and the day looks like one where nothing was learned. It was caught by running the real hook against this session's own transcript rather than a fixture.",
+      "alternatives_rejected": "",
+      "anchors": [
+        "pcnn/ingest.py",
+        "pcnn/reap.py"
+      ],
+      "evidence": [
+        "self/2026-09-17/hook-run"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.8
+    },
+    {
+      "id": "PCNN.GOT-001",
+      "head": "Large Python files written through bash heredocs get mangled; use the Write tool",
+      "layer": "GOT",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.84,
+      "pin": false,
+      "signals": [
+        "bash",
+        "file-creation",
+        "heredoc",
+        "quoting",
+        "windows",
+        "write-tool"
+      ],
+      "description": "Creating pcnn/schema.py with a quoted bash heredoc failed with \"unexpected EOF while looking for matching quote\" on Git Bash under Windows, despite the terminator being correct. Writing the same content with the Write tool succeeded immediately.",
+      "rationale": "Shell quoting over a multi-hundred-line payload containing apostrophes and regex escapes is fragile enough that retrying it costs more than switching tools.",
+      "alternatives_rejected": "",
+      "anchors": [
+        "pcnn/schema.py"
+      ],
+      "evidence": [
+        "P11"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.8
+    },
+    {
+      "id": "PCNN.GOT-008",
+      "head": "Re-distilling the same delta mints duplicate neurons because placeholder ids cannot match existing ones",
+      "layer": "GOT",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "inferred",
+      "salience": 0.84,
+      "pin": false,
+      "signals": [
+        "deduplication",
+        "duplicate neurons",
+        "idempotence",
+        "placeholder id",
+        "rerun",
+        "upsert"
+      ],
+      "description": "Distilling the same raw delta twice produced two near-identical neuron pairs in the pcnn network - PCNN.GOT-005 and PCNN.GOT-006 both stating that a distillation run is itself harvested, and PCNN.OPS-003 and PCNN.OPS-004 carrying an identical head about the invest project. The cause is that an upsert naming a $LAYER-n placeholder always allocates a fresh id, so the engine has no key by which to recognise that the same fact already exists; re-running distillation over an unchanged day therefore grows the graph instead of touching it. Resolution is a supersede edge from the fuller neuron to the thinner one, never deletion.",
+      "rationale": "The placeholder mechanism that keeps the model from inventing ids also strips it of any way to address an existing neuron it is about to restate, so idempotence has to come from head or description matching at upsert time or from a consolidation pass, not from the model's own output.",
+      "alternatives_rejected": "deleting the duplicate neuron; letting the model guess a concrete id instead of a placeholder, which PCNN.DEC-001 forbids",
+      "anchors": [
+        "pcnn/distill.py",
+        "pcnn/schema.py",
+        "pcnn/store.py"
+      ],
+      "evidence": [
+        "recap/session-7be63a0e-2d25-4765-b5a2-345a527e3db8"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.8
+    },
+    {
+      "id": "PCNN.GOT-004",
+      "head": "An inline SVG with no CSS size rule renders at its default size and wrecks the layout",
+      "layer": "GOT",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.82,
+      "pin": false,
+      "signals": [
+        "css-sizing",
+        "glyph",
+        "inline-svg",
+        "layout-bug",
+        "legend"
+      ],
+      "description": "The same svgGlyph helper fed both the filter chips and the legend, but only .chip .glyph carried width and height, so every legend glyph rendered at the browser default SVG size and expanded the panel to the full height of the page. The size rule is now on the .mark class itself rather than on one of its call sites.",
+      "rationale": "An inline SVG has no intrinsic size to fall back on, so a shared helper must carry its own dimensions instead of relying on whichever context happens to style it.",
+      "alternatives_rejected": "",
+      "anchors": [
+        "pcnn/templates/network.html.tmpl"
+      ],
+      "evidence": [
+        "recap/2026-09-17/design"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.8
+    },
+    {
+      "id": "PCNN.GOT-007",
+      "head": "Repeated distillation of identical delta shapes mints duplicate neurons because upsert allocates a fresh id",
+      "layer": "GOT",
+      "project": "pcnn",
+      "status": "superseded",
+      "confidence": "inferred",
+      "salience": 0.82,
+      "pin": false,
+      "signals": [
+        "dedup",
+        "duplicate",
+        "id allocation",
+        "near-identical neuron",
+        "placeholder",
+        "upsert"
+      ],
+      "description": "A $LAYER-n upsert always allocates a new id, so a delta shape that recurs across runs yields a fresh neuron stating the same fact each time rather than converging on one. The pcnn network on 2026-09-17 carries two such pairs: PCNN.GOT-005 and PCNN.GOT-006 both state that a distillation run is itself a harvested session producing a self-referential delta, and PCNN.OPS-003 and PCNN.OPS-004 both state that the invest project is the second PCNN network populated by distillation on 2026-09-17. Duplicates split activation between two entries and inflate MAP.md; resolution is a supersede edge from one to the other, never a deletion.",
+      "rationale": "Distillation has no way to recognise that a proposed neuron restates an existing one, so the instruction to touch rather than re-record is the only dedup mechanism, and it fails exactly when a delta recurs in near-identical form.",
+      "alternatives_rejected": "deleting the redundant neuron; rewriting one of the pair to absorb the other",
+      "anchors": [
+        "pcnn/distill.py",
+        "pcnn/store.py"
+      ],
+      "evidence": [
+        "recap/session-243ebd4e-5074-4a80-8165-4e25b55b3ee0"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.8
+    },
+    {
+      "id": "PCNN.TODO-001",
+      "head": "No project other than pcnn itself has been onboarded yet",
+      "layer": "TODO",
+      "project": "pcnn",
+      "status": "superseded",
+      "confidence": "verified",
+      "salience": 0.7,
+      "pin": false,
+      "signals": [
+        "backlog",
+        "invest",
+        "kriptografi",
+        "next-steps",
+        "onboarding"
+      ],
+      "description": "The registry holds only the pcnn project. The invest project is the intended first real onboarding because it has the largest transcript history and a public GitHub remote, which exercises both ingestion volume and the rule that real project context stays out of the public repository. kriptografi follows.",
+      "rationale": "",
+      "alternatives_rejected": "",
+      "anchors": [],
+      "evidence": [
+        "P12"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.6
+    },
+    {
+      "id": "PCNN.GLO-001",
+      "head": "Neuron, salience, signals, anchors, evidence and layer have fixed meanings",
+      "layer": "GLO",
+      "project": "pcnn",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.6,
+      "pin": false,
+      "signals": [
+        "definitions",
+        "glossary",
+        "terminology",
+        "vocabulary"
+      ],
+      "description": "A neuron is one atomic fact. Salience is its stored importance from 0 to 1. Signals are curated retrieval keys used to seed a query. Anchors are file or file:line references into the project being described. Evidence records where the fact came from, a recap path or an intake paragraph id. A layer is the single category a fact belongs to.",
+      "rationale": "",
+      "alternatives_rejected": "",
+      "anchors": [
+        "pcnn/schema.py"
+      ],
+      "evidence": [
+        "P1"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.55
+    }
+  ],
+  "edges": [
+    {
+      "src": "PCNN.DEC-001",
+      "dst": "PCNN.IDENT-001",
+      "type": "caused_by",
+      "weight": 0.6
+    },
+    {
+      "src": "PCNN.DEC-001",
+      "dst": "PCNN.CON-002",
+      "type": "constrained_by",
+      "weight": 0.95
+    },
+    {
+      "src": "PCNN.DEC-008",
+      "dst": "PCNN.IDENT-001",
+      "type": "caused_by",
+      "weight": 0.85
+    },
+    {
+      "src": "PCNN.DEC-008",
+      "dst": "PCNN.CON-006",
+      "type": "implements",
+      "weight": 0.95
+    },
+    {
+      "src": "PCNN.DEC-008",
+      "dst": "PCNN.ARC-002",
+      "type": "refines",
+      "weight": 0.85
+    },
+    {
+      "src": "PCNN.DEC-006",
+      "dst": "PCNN.ARC-002",
+      "type": "constrained_by",
+      "weight": 0.85
+    },
+    {
+      "src": "PCNN.DEC-006",
+      "dst": "PCNN.CON-002",
+      "type": "constrained_by",
+      "weight": 0.9
+    },
+    {
+      "src": "PCNN.DEC-006",
+      "dst": "PCNN.CON-006",
+      "type": "implements",
+      "weight": 0.9
+    },
+    {
+      "src": "PCNN.DEC-002",
+      "dst": "PCNN.IMP-002",
+      "type": "constrained_by",
+      "weight": 0.5
+    },
+    {
+      "src": "PCNN.DEC-004",
+      "dst": "PCNN.CON-001",
+      "type": "caused_by",
+      "weight": 0.9
+    },
+    {
+      "src": "PCNN.DEC-004",
+      "dst": "PCNN.IMP-002",
+      "type": "constrained_by",
+      "weight": 0.85
+    },
+    {
+      "src": "PCNN.DEC-009",
+      "dst": "PCNN.DAT-004",
+      "type": "depends_on",
+      "weight": 0.9
+    },
+    {
+      "src": "PCNN.DEC-009",
+      "dst": "PCNN.DEC-005",
+      "type": "refines",
+      "weight": 0.85
+    },
+    {
+      "src": "PCNN.DEC-005",
+      "dst": "PCNN.DEC-002",
+      "type": "refines",
+      "weight": 0.8
+    },
+    {
+      "src": "PCNN.DEC-003",
+      "dst": "PCNN.ARC-002",
+      "type": "implements",
+      "weight": 0.75
+    },
+    {
+      "src": "PCNN.DEC-007",
+      "dst": "PCNN.OPS-001",
+      "type": "refines",
+      "weight": 0.75
+    },
+    {
+      "src": "PCNN.CON-001",
+      "dst": "PCNN.IDENT-001",
+      "type": "caused_by",
+      "weight": 0.9
+    },
+    {
+      "src": "PCNN.CON-002",
+      "dst": "PCNN.IDENT-001",
+      "type": "caused_by",
+      "weight": 0.9
+    },
+    {
+      "src": "PCNN.CON-005",
+      "dst": "PCNN.GOT-005",
+      "type": "caused_by",
+      "weight": 1.0
+    },
+    {
+      "src": "PCNN.CON-005",
+      "dst": "PCNN.ARC-002",
+      "type": "constrained_by",
+      "weight": 0.95
+    },
+    {
+      "src": "PCNN.CON-006",
+      "dst": "PCNN.IDENT-001",
+      "type": "caused_by",
+      "weight": 0.95
+    },
+    {
+      "src": "PCNN.CON-006",
+      "dst": "PCNN.CON-005",
+      "type": "refines",
+      "weight": 0.8
+    },
+    {
+      "src": "PCNN.CON-003",
+      "dst": "PCNN.DAT-001",
+      "type": "constrained_by",
+      "weight": 0.7
+    },
+    {
+      "src": "PCNN.CON-004",
+      "dst": "PCNN.IMP-002",
+      "type": "constrained_by",
+      "weight": 0.9
+    },
+    {
+      "src": "PCNN.ARC-002",
+      "dst": "PCNN.CON-002",
+      "type": "constrained_by",
+      "weight": 0.9
+    },
+    {
+      "src": "PCNN.ARC-002",
+      "dst": "PCNN.DEC-001",
+      "type": "implements",
+      "weight": 0.85
+    },
+    {
+      "src": "PCNN.ARC-001",
+      "dst": "PCNN.IDENT-001",
+      "type": "implements",
+      "weight": 0.8
+    },
+    {
+      "src": "PCNN.IMP-001",
+      "dst": "PCNN.CON-001",
+      "type": "constrained_by",
+      "weight": 0.7
+    },
+    {
+      "src": "PCNN.IMP-001",
+      "dst": "PCNN.ARC-001",
+      "type": "depends_on",
+      "weight": 0.75
+    },
+    {
+      "src": "PCNN.IMP-002",
+      "dst": "PCNN.DEC-002",
+      "type": "implements",
+      "weight": 0.9
+    },
+    {
+      "src": "PCNN.IMP-002",
+      "dst": "PCNN.DEC-004",
+      "type": "implements",
+      "weight": 0.9
+    },
+    {
+      "src": "PCNN.DAT-002",
+      "dst": "PCNN.CON-005",
+      "type": "constrained_by",
+      "weight": 0.85
+    },
+    {
+      "src": "PCNN.DAT-002",
+      "dst": "PCNN.DEC-008",
+      "type": "implements",
+      "weight": 0.9
+    },
+    {
+      "src": "PCNN.DAT-003",
+      "dst": "PCNN.CON-002",
+      "type": "constrained_by",
+      "weight": 0.85
+    },
+    {
+      "src": "PCNN.DAT-003",
+      "dst": "PCNN.DEC-001",
+      "type": "refines",
+      "weight": 0.8
+    },
+    {
+      "src": "PCNN.DAT-003",
+      "dst": "PCNN.DAT-005",
+      "type": "supersedes",
+      "weight": 1.0
+    },
+    {
+      "src": "PCNN.DAT-005",
+      "dst": "PCNN.CON-002",
+      "type": "constrained_by",
+      "weight": 0.85
+    },
+    {
+      "src": "PCNN.DAT-005",
+      "dst": "PCNN.DEC-001",
+      "type": "refines",
+      "weight": 0.8
+    },
+    {
+      "src": "PCNN.DAT-001",
+      "dst": "PCNN.CON-002",
+      "type": "constrained_by",
+      "weight": 0.8
+    },
+    {
+      "src": "PCNN.OPS-005",
+      "dst": "PCNN.ARC-002",
+      "type": "constrained_by",
+      "weight": 0.7
+    },
+    {
+      "src": "PCNN.OPS-002",
+      "dst": "PCNN.OPS-001",
+      "type": "depends_on",
+      "weight": 0.6
+    },
+    {
+      "src": "PCNN.OPS-002",
+      "dst": "PCNN.ARC-002",
+      "type": "implements",
+      "weight": 0.8
+    },
+    {
+      "src": "PCNN.OPS-003",
+      "dst": "PCNN.ARC-002",
+      "type": "instance_of",
+      "weight": 0.7
+    },
+    {
+      "src": "PCNN.OPS-003",
+      "dst": "PCNN.OPS-004",
+      "type": "supersedes",
+      "weight": 1.0
+    },
+    {
+      "src": "PCNN.OPS-003",
+      "dst": "PCNN.TODO-001",
+      "type": "supersedes",
+      "weight": 1.0
+    },
+    {
+      "src": "PCNN.OPS-004",
+      "dst": "PCNN.ARC-002",
+      "type": "instance_of",
+      "weight": 0.7
+    },
+    {
+      "src": "PCNN.OPS-004",
+      "dst": "PCNN.TODO-001",
+      "type": "supersedes",
+      "weight": 1.0
+    },
+    {
+      "src": "PCNN.OPS-001",
+      "dst": "PCNN.IMP-001",
+      "type": "depends_on",
+      "weight": 0.45
+    },
+    {
+      "src": "PCNN.OPS-001",
+      "dst": "PCNN.IMP-002",
+      "type": "depends_on",
+      "weight": 0.45
+    },
+    {
+      "src": "PCNN.OPS-006",
+      "dst": "PCNN.DEC-009",
+      "type": "implements",
+      "weight": 0.75
+    },
+    {
+      "src": "PCNN.OPS-006",
+      "dst": "PCNN.DEC-009",
+      "type": "refines",
+      "weight": 0.7
+    },
+    {
+      "src": "PCNN.GOT-006",
+      "dst": "PCNN.DEC-001",
+      "type": "caused_by",
+      "weight": 0.7
+    },
+    {
+      "src": "PCNN.GOT-006",
+      "dst": "PCNN.ARC-002",
+      "type": "constrained_by",
+      "weight": 0.8
+    },
+    {
+      "src": "PCNN.GOT-006",
+      "dst": "PCNN.GOT-003",
+      "type": "refines",
+      "weight": 0.6
+    },
+    {
+      "src": "PCNN.GOT-006",
+      "dst": "PCNN.GOT-005",
+      "type": "supersedes",
+      "weight": 1.0
+    },
+    {
+      "src": "PCNN.GOT-009",
+      "dst": "PCNN.ARC-002",
+      "type": "constrained_by",
+      "weight": 0.85
+    },
+    {
+      "src": "PCNN.GOT-009",
+      "dst": "PCNN.CON-002",
+      "type": "verified_by",
+      "weight": 0.7
+    },
+    {
+      "src": "PCNN.GOT-003",
+      "dst": "PCNN.CON-002",
+      "type": "caused_by",
+      "weight": 0.55
+    },
+    {
+      "src": "PCNN.GOT-003",
+      "dst": "PCNN.ARC-002",
+      "type": "constrained_by",
+      "weight": 0.9
+    },
+    {
+      "src": "PCNN.GOT-002",
+      "dst": "PCNN.ARC-002",
+      "type": "constrained_by",
+      "weight": 0.85
+    },
+    {
+      "src": "PCNN.GOT-005",
+      "dst": "PCNN.DEC-001",
+      "type": "caused_by",
+      "weight": 0.7
+    },
+    {
+      "src": "PCNN.GOT-005",
+      "dst": "PCNN.ARC-002",
+      "type": "constrained_by",
+      "weight": 0.8
+    },
+    {
+      "src": "PCNN.GOT-005",
+      "dst": "PCNN.CON-005",
+      "type": "verified_by",
+      "weight": 0.8
+    },
+    {
+      "src": "PCNN.GOT-010",
+      "dst": "PCNN.DEC-008",
+      "type": "constrained_by",
+      "weight": 0.9
+    },
+    {
+      "src": "PCNN.GOT-010",
+      "dst": "PCNN.DAT-002",
+      "type": "refines",
+      "weight": 0.75
+    },
+    {
+      "src": "PCNN.GOT-001",
+      "dst": "PCNN.OPS-001",
+      "type": "relates_to",
+      "weight": 0.3
+    },
+    {
+      "src": "PCNN.GOT-008",
+      "dst": "PCNN.DEC-001",
+      "type": "caused_by",
+      "weight": 0.8
+    },
+    {
+      "src": "PCNN.GOT-008",
+      "dst": "PCNN.DAT-001",
+      "type": "constrained_by",
+      "weight": 0.7
+    },
+    {
+      "src": "PCNN.GOT-008",
+      "dst": "PCNN.GOT-006",
+      "type": "refines",
+      "weight": 0.6
+    },
+    {
+      "src": "PCNN.GOT-008",
+      "dst": "PCNN.GOT-007",
+      "type": "supersedes",
+      "weight": 1.0
+    },
+    {
+      "src": "PCNN.GOT-004",
+      "dst": "PCNN.IMP-002",
+      "type": "constrained_by",
+      "weight": 0.6
+    },
+    {
+      "src": "PCNN.GOT-007",
+      "dst": "PCNN.DEC-001",
+      "type": "caused_by",
+      "weight": 0.9
+    },
+    {
+      "src": "PCNN.GOT-007",
+      "dst": "PCNN.CON-002",
+      "type": "constrained_by",
+      "weight": 0.7
+    },
+    {
+      "src": "PCNN.GOT-007",
+      "dst": "PCNN.GOT-006",
+      "type": "refines",
+      "weight": 0.7
+    },
+    {
+      "src": "PCNN.TODO-001",
+      "dst": "PCNN.ARC-002",
+      "type": "blocks",
+      "weight": 0.4
+    },
+    {
+      "src": "PCNN.GLO-001",
+      "dst": "PCNN.DAT-001",
+      "type": "refines",
+      "weight": 0.55
+    }
+  ]
+}

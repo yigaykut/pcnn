@@ -1,0 +1,32 @@
+# The engine, the schema and the prompts are public.
+# Real project context is not: it describes private codebases.
+
+# Harvested session material - verbatim instructions, commands, file paths
+networks/*/recaps/
+networks/*/intake/
+networks/*/quarantine/
+networks/*/audit.json
+hooks/hook.log
+
+# A project's neurons are published only when it is listed here. Everything
+# else stays local, because it describes private code.
+networks/*/
+!networks/pcnn/
+!networks/invest/
+networks/*/recaps/
+networks/*/intake/
+networks/*/quarantine/
+networks/*/audit.json
+
+# Rendered views are build output; regenerate with `python -m pcnn render --all`
+output/
+
+# registry.json holds absolute paths to local projects
+registry.json
+
+__pycache__/
+*.pyc
+.venv/
+
+# runtime logs
+scripts/nightly.log

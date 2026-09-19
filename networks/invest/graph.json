@@ -1,0 +1,645 @@
+{
+  "dsl": "1.0",
+  "project": "invest",
+  "scope": "INVEST",
+  "generated": "2026-09-19T09:52:48+00:00",
+  "layers": {
+    "IDENT": 0.9,
+    "DEC": 0.85,
+    "CON": 0.95,
+    "ARC": 0.7,
+    "IMP": 0.5,
+    "DAT": 0.65,
+    "OPS": 0.6,
+    "GOT": 0.8,
+    "TODO": 0.6,
+    "GLO": 0.55,
+    "PAT": 0.7
+  },
+  "edge_types": {
+    "depends_on": "source cannot function without target",
+    "implements": "source is the concrete realisation of target",
+    "constrained_by": "target limits what source may do",
+    "caused_by": "target is the reason source exists",
+    "refines": "source narrows or details target",
+    "instance_of": "source is a specific case of the general target",
+    "contradicts": "source and target cannot both be true",
+    "supersedes": "source replaces target",
+    "blocks": "source prevents target from progressing",
+    "verified_by": "target is the evidence that source holds",
+    "mirrors": "source and target solve the same problem in different projects",
+    "relates_to": "weak fallback association"
+  },
+  "nodes": [
+    {
+      "id": "INVEST.IDENT-001",
+      "head": "invest ranks US stocks by a weighted multi-factor score to surface emerging, not-yet-topped-out companies",
+      "layer": "IDENT",
+      "project": "invest",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.92,
+      "pin": false,
+      "signals": [
+        "equities",
+        "hisse tarama",
+        "investment",
+        "ranking",
+        "scoring system",
+        "stock screener"
+      ],
+      "description": "invest is a Python stock screening and ranking system that scores every ticker in a configurable universe against weighted parameters, sums them into a single score, and renders the ranking high-to-low in an interactive HTML dashboard. The target user is a retail investor looking for future-promising emerging companies rather than mature mega caps. Output is also emitted as a machine-readable JSON export so the ranking can later feed a machine-learning model. The interface language is Turkish.",
+      "rationale": "",
+      "alternatives_rejected": "",
+      "anchors": [
+        "README.md",
+        "docs/PARAMETRELER.md",
+        "run.py"
+      ],
+      "evidence": [
+        "recap/session-1ba99976-dc23-4ebe-ae08-ad19f0ecfeb9"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.9
+    },
+    {
+      "id": "INVEST.DEC-001",
+      "head": "The scan universe is smallcap and midcap from the Nasdaq screener API, not S&P 500 or Nasdaq-100",
+      "layer": "DEC",
+      "project": "invest",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.9,
+      "pin": false,
+      "signals": [
+        "evren",
+        "index constituents",
+        "nasdaq screener",
+        "small cap",
+        "ticker list",
+        "universe"
+      ],
+      "description": "src/universe.py builds the default scan universe from the Nasdaq screener endpoint https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=10000&offset=0&exchange=<EX> across NASDAQ, NYSE and AMEX, bucketed by market cap into smallcap and midcap sources, giving roughly 7000 tickers before filtering. The canonical scan is --universe smallcap,midcap,wsb.",
+      "rationale": "Index membership selects for companies that already completed their growth; scanning the S&P 500 returned only high-priced, topped-out names, which is the opposite of the stated goal of finding future-promising stocks.",
+      "alternatives_rejected": "S&P 500 and Nasdaq-100 constituent lists scraped from Wikipedia, which remain available as the sp500 and nasdaq100 sources but are no longer the default.",
+      "anchors": [
+        "config/weights.yaml",
+        "src/universe.py"
+      ],
+      "evidence": [
+        "recap/session-1ba99976-dc23-4ebe-ae08-ad19f0ecfeb9"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.85
+    },
+    {
+      "id": "INVEST.DEC-002",
+      "head": "Scores are shrunk toward the mean by coverage so thin-data tickers cannot top the ranking",
+      "layer": "DEC",
+      "project": "invest",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.9,
+      "pin": false,
+      "signals": [
+        "coverage",
+        "low confidence",
+        "missing data",
+        "ranking bias",
+        "regional banks",
+        "shrinkage"
+      ],
+      "description": "src/scoring.py multiplies each ticker's weighted score by a coverage-based shrinkage term and drops any ticker whose coverage falls below a configured floor entirely, in addition to flagging low_confidence below min_coverage_for_confidence (0.60). A market capitalisation ceiling filter was added at the same time.",
+      "rationale": "Without shrinkage, tickers with almost no data (small regional banks such as RZC, AMTB, AMAL, OBK) scored highest because the weights of their missing factors were renormalised away, turning absent data into an advantage and concentrating the top of the ranking in one sector.",
+      "alternatives_rejected": "Relying only on the low_confidence flag and leaving thin-data tickers in the ranking for the reader to discount.",
+      "anchors": [
+        "config/weights.yaml",
+        "src/scoring.py",
+        "tests/test_scoring.py"
+      ],
+      "evidence": [
+        "recap/session-1ba99976-dc23-4ebe-ae08-ad19f0ecfeb9"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.85
+    },
+    {
+      "id": "INVEST.DEC-003",
+      "head": "Factors whose data coverage is too thin are auto-disabled and the remaining weights renormalised",
+      "layer": "DEC",
+      "project": "invest",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.87,
+      "pin": false,
+      "signals": [
+        "auto disable",
+        "diagnostics",
+        "sparse factor",
+        "weight renormalisation",
+        "wsb mentions"
+      ],
+      "description": "src/scoring.py detects factors available for too few tickers in a run, removes them from the calculation, renormalises the surviving weights so they still sum to the configured total, and reports the removals in diagnostics under auto_disabled, which the dashboard displays.",
+      "rationale": "The user required that an over-restrictive parameter such as presence on the Reddit wallstreetbets chart be sacrificeable rather than silently eliminating most candidates.",
+      "alternatives_rejected": "Hard-filtering on restrictive parameters, and scoring missing factors as zero, both of which penalise tickers for data absence rather than for weakness.",
+      "anchors": [
+        "src/scoring.py",
+        "tests/test_scoring.py"
+      ],
+      "evidence": [
+        "recap/session-1ba99976-dc23-4ebe-ae08-ad19f0ecfeb9"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.85
+    },
+    {
+      "id": "INVEST.CON-001",
+      "head": "The in-dashboard assistant must stay free and offline, answering only from data embedded in the page",
+      "layer": "CON",
+      "project": "invest",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.96,
+      "pin": false,
+      "signals": [
+        "assistant",
+        "chat",
+        "free",
+        "intent engine",
+        "no api",
+        "offline",
+        "ucretsiz"
+      ],
+      "description": "src/assistant_ui.py emits a chat panel into section IV of output/dashboard.html that resolves questions about tickers and parameters with a client-side intent engine over the computed data already serialised into the page. No paid language-model service may be called, and no network request is made at answer time.",
+      "rationale": "The user requested the chat feature with the explicit condition that it be free, so any design that calls a hosted model API violates the requirement regardless of quality gain.",
+      "alternatives_rejected": "",
+      "anchors": [
+        "src/assistant_ui.py",
+        "src/report.py"
+      ],
+      "evidence": [
+        "recap/session-1ba99976-dc23-4ebe-ae08-ad19f0ecfeb9"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.95
+    },
+    {
+      "id": "INVEST.CON-002",
+      "head": "All user-facing text in invest is Turkish, including parameter names, docs and dashboard labels",
+      "layer": "CON",
+      "project": "invest",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.95,
+      "pin": false,
+      "signals": [
+        "documentation language",
+        "labels",
+        "localisation",
+        "name_tr",
+        "turkce",
+        "turkish"
+      ],
+      "description": "Every parameter in config/weights.yaml carries a name_tr field, docs/PARAMETRELER.md explains all parameters in Turkish, and README.md plus the dashboard and watchlist HTML render their labels, risk levels and explanations in Turkish. Output files are written and read with explicit UTF-8 encoding, and generated HTML must carry a charset meta tag.",
+      "rationale": "The user works in Turkish and asked for a detailed Turkish explanation file covering every parameter, so English-only additions would be unreadable to the sole intended reader.",
+      "alternatives_rejected": "",
+      "anchors": [
+        "config/weights.yaml",
+        "docs/PARAMETRELER.md",
+        "src/report.py"
+      ],
+      "evidence": [
+        "recap/session-1ba99976-dc23-4ebe-ae08-ad19f0ecfeb9"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.95
+    },
+    {
+      "id": "INVEST.ARC-001",
+      "head": "invest runs a five-stage pipeline: universe -> providers -> factors -> scoring -> report",
+      "layer": "ARC",
+      "project": "invest",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.8,
+      "pin": false,
+      "signals": [
+        "architecture",
+        "boru hatti",
+        "data flow",
+        "modules",
+        "pipeline",
+        "stages"
+      ],
+      "description": "The invest pipeline has five stages, each owning one module. src/universe.py builds the ticker list from named sources (sp500, nasdaq100, smallcap, midcap, wsb). src/providers/ fetches raw data (yahoo.py for price history and fundamentals, reddit_wsb.py for mention counts, cache.py for an on-disk namespaced cache). src/factors.py computes one raw value per parameter per ticker. src/scoring.py normalises, weights, applies penalties and filters, and produces the ranking. src/report.py renders output/dashboard.html plus output/ranking.csv, output/llm_export.json and output/diagnostics.json. run.py is the CLI entry point that drives all five stages.",
+      "rationale": "",
+      "alternatives_rejected": "",
+      "anchors": [
+        "run.py",
+        "src/factors.py",
+        "src/providers/",
+        "src/report.py",
+        "src/scoring.py",
+        "src/universe.py"
+      ],
+      "evidence": [
+        "recap/session-1ba99976-dc23-4ebe-ae08-ad19f0ecfeb9"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.7
+    },
+    {
+      "id": "INVEST.IMP-001",
+      "head": "src/watchlist.py and src/targets.py produce daily targets, stops and risk levels for held tickers",
+      "layer": "IMP",
+      "project": "invest",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.65,
+      "pin": false,
+      "signals": [
+        "izleme listesi",
+        "position tracking",
+        "price target",
+        "sell signal",
+        "stop loss",
+        "watchlist"
+      ],
+      "description": "src/watchlist.py stores selected tickers with an optional entry price and note, and on update recomputes for each one the current price, profit and loss against the entry price, a short term and a long term price target with the method that produced it, stop levels, and a Turkish risk level. src/targets.py holds the target and stop calculations, and src/report_watch.py renders output/watchlist.html. The dashboard carries an add-to-list button per row.",
+      "rationale": "",
+      "alternatives_rejected": "",
+      "anchors": [
+        "src/report_watch.py",
+        "src/targets.py",
+        "src/watchlist.py"
+      ],
+      "evidence": [
+        "recap/session-1ba99976-dc23-4ebe-ae08-ad19f0ecfeb9"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.5
+    },
+    {
+      "id": "INVEST.DAT-001",
+      "head": "config/weights.yaml is the single source of truth for factors, weights, penalties and filters",
+      "layer": "DAT",
+      "project": "invest",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.8,
+      "pin": false,
+      "signals": [
+        "config",
+        "factor definition",
+        "parameters",
+        "schema",
+        "weights",
+        "yaml"
+      ],
+      "description": "config/weights.yaml holds a factors list where each entry carries id, weight, category (technical, emergence, potential, quality, analyst, valuation, momentum, risk, sentiment, growth), norm (the normalisation method), and name_tr (the Turkish display name). The same file holds a penalties list of id/points/name_tr entries, a filters block, and scoring keys including min_coverage_for_confidence (0.60). Both README.md and docs/PARAMETRELER.md are generated and cross-checked against this file, so adding a factor without updating the config breaks the docs consistency check.",
+      "rationale": "",
+      "alternatives_rejected": "",
+      "anchors": [
+        "README.md",
+        "config/weights.yaml",
+        "docs/PARAMETRELER.md"
+      ],
+      "evidence": [
+        "recap/session-1ba99976-dc23-4ebe-ae08-ad19f0ecfeb9"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.65
+    },
+    {
+      "id": "INVEST.OPS-001",
+      "head": "The canonical scan is python run.py --universe smallcap,midcap,wsb --top 45 --workers 8",
+      "layer": "OPS",
+      "project": "invest",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.72,
+      "pin": false,
+      "signals": [
+        "cache",
+        "cli",
+        "http server",
+        "run command",
+        "scan",
+        "test command"
+      ],
+      "description": "A full scan runs as python run.py --universe smallcap,midcap,wsb --top 45 --workers 8 and takes roughly an hour, so running it in the background is normal. Stale data is cleared with python run.py clear-cache, optionally scoped by --namespace (for example yahoo_bench). Watchlist commands are python run.py watch add TICKER [--price P] [--note N], watch list, and watch update [--use-cache]. Tests run as python tests/test_scoring.py. Generated HTML is inspected by serving output/ with python -m http.server <port> --bind 127.0.0.1. Yahoo fetch noise is suppressed by piping through grep -v \"HTTP Error\".",
+      "rationale": "",
+      "alternatives_rejected": "",
+      "anchors": [
+        "run.py",
+        "tests/test_scoring.py"
+      ],
+      "evidence": [
+        "recap/session-1ba99976-dc23-4ebe-ae08-ad19f0ecfeb9"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.6
+    },
+    {
+      "id": "INVEST.GOT-001",
+      "head": "yfinance fails TLS on this machine until the certifi bundle is copied to an ASCII-only path",
+      "layer": "GOT",
+      "project": "invest",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.88,
+      "pin": false,
+      "signals": [
+        "certifi",
+        "certificate",
+        "curl_ca_bundle",
+        "ssl",
+        "unicode path",
+        "yfinance"
+      ],
+      "description": "Fetching data through yfinance on this Windows machine requires copying certifi.where() to C:\\claude-certs\\cacert.pem and exporting CURL_CA_BUNDLE and SSL_CERT_FILE to that path before running any command that touches Yahoo Finance.",
+      "rationale": "The default certifi bundle sits under a user profile directory containing the non-ASCII character in MSİ, which the underlying TLS stack cannot open, so certificate verification fails before any request is made.",
+      "alternatives_rejected": "",
+      "anchors": [
+        "README.md",
+        "src/providers/yahoo.py"
+      ],
+      "evidence": [
+        "recap/session-1ba99976-dc23-4ebe-ae08-ad19f0ecfeb9"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.8
+    },
+    {
+      "id": "INVEST.GOT-003",
+      "head": "Dashboard HTML is verified by a Node smoke test with DOM stubs because browser screenshots freeze the renderer",
+      "layer": "GOT",
+      "project": "invest",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.84,
+      "pin": false,
+      "signals": [
+        "dom stub",
+        "node",
+        "renderer frozen",
+        "screenshot timeout",
+        "smoke test",
+        "svg density"
+      ],
+      "description": "Visual verification of output/dashboard.html through the Chrome tooling repeatedly failed with script-injection and Page.captureScreenshot timeouts after the page was served on 127.0.0.1. Verification instead extracts the inline script block, runs it under Node against a minimal document/localStorage stub, and asserts on the rendered row counts, categories and assistant answers; the payload is separately checked by parsing the const DATA literal out of the HTML.",
+      "rationale": "The dashboard embeds dense inline SVG sparklines for dozens of tickers, which stalls the renderer long enough that every screenshot and scroll action times out, so browser-driven checking costs minutes and yields nothing.",
+      "alternatives_rejected": "",
+      "anchors": [
+        "output/dashboard.html",
+        "src/report.py"
+      ],
+      "evidence": [
+        "recap/session-1ba99976-dc23-4ebe-ae08-ad19f0ecfeb9"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.8
+    },
+    {
+      "id": "INVEST.GOT-002",
+      "head": "Wikipedia index scraping needs lxml installed, and Nasdaq-100 tables must be located by column name",
+      "layer": "GOT",
+      "project": "invest",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.82,
+      "pin": false,
+      "signals": [
+        "lxml",
+        "nasdaq-100",
+        "read_html",
+        "scraping",
+        "table parsing",
+        "wikipedia"
+      ],
+      "description": "pandas.read_html raises an import error until lxml is installed, which is why lxml is listed in requirements.txt. The Nasdaq-100 Wikipedia page additionally returns several tables whose index shifts, so src/universe.py fetches the page with a Mozilla User-Agent, wraps the HTML in io.StringIO and selects the table that has a Ticker or Symbol column rather than a fixed position.",
+      "rationale": "A missing optional parser dependency and a positional table index both fail silently as an empty universe, which looks like a scoring bug rather than a fetch bug.",
+      "alternatives_rejected": "",
+      "anchors": [
+        "requirements.txt",
+        "src/universe.py"
+      ],
+      "evidence": [
+        "recap/session-1ba99976-dc23-4ebe-ae08-ad19f0ecfeb9"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.8
+    },
+    {
+      "id": "INVEST.TODO-001",
+      "head": "Yahoo returns no price history for 2186 of 2749 emerging-universe tickers and the cause is unresolved",
+      "layer": "TODO",
+      "project": "invest",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.78,
+      "pin": false,
+      "signals": [
+        "2186",
+        "coverage gap",
+        "missing data",
+        "universe shrink",
+        "unresolved",
+        "yahoo history"
+      ],
+      "description": "A full smallcap and midcap scan of 2781 tickers scored only 429 of them. Investigation established that 2186 of 2749 tickers have no price history at all, leaving effective coverage near 563 stocks, and that the one-million-dollar daily liquidity filter is not the cause. Whether the missing tickers are delisted, carry symbols Yahoo spells differently, or are lost to fetch throttling remains undetermined as of 2026-08-11. A related fix is needed in diagnostics, which stored only the first 50 dropped examples and therefore concealed the scale of the gap.",
+      "rationale": "",
+      "alternatives_rejected": "",
+      "anchors": [
+        "output/diagnostics.json",
+        "src/providers/yahoo.py",
+        "src/universe.py"
+      ],
+      "evidence": [
+        "recap/session-1ba99976-dc23-4ebe-ae08-ad19f0ecfeb9"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.6
+    },
+    {
+      "id": "INVEST.GLO-001",
+      "head": "\"kapsama\" is the share of total factor weight a ticker actually has data for",
+      "layer": "GLO",
+      "project": "invest",
+      "status": "active",
+      "confidence": "verified",
+      "salience": 0.6,
+      "pin": false,
+      "signals": [
+        "coverage",
+        "etki puani",
+        "glossary",
+        "kapsama",
+        "low confidence",
+        "terminology"
+      ],
+      "description": "In invest, \"kapsama\" (coverage) names the fraction of the total configured factor weight for which a ticker has usable data, exported as the coverage field and shown as a percentage. A ticker below min_coverage_for_confidence is marked low_confidence, rendered in Turkish as \"dusuk guven\". The weighted sum itself is called \"etki puani\" (impact score) in Turkish and total_score in the JSON export.",
+      "rationale": "",
+      "alternatives_rejected": "",
+      "anchors": [
+        "config/weights.yaml",
+        "output/llm_export.json",
+        "src/scoring.py"
+      ],
+      "evidence": [
+        "recap/session-1ba99976-dc23-4ebe-ae08-ad19f0ecfeb9"
+      ],
+      "first_seen": "2026-09-17",
+      "last_touched": "2026-09-17",
+      "revision": 1,
+      "note": "",
+      "floor": 0.55
+    }
+  ],
+  "edges": [
+    {
+      "src": "INVEST.DEC-001",
+      "dst": "INVEST.GOT-002",
+      "type": "constrained_by",
+      "weight": 0.6
+    },
+    {
+      "src": "INVEST.DEC-001",
+      "dst": "INVEST.IDENT-001",
+      "type": "implements",
+      "weight": 0.85
+    },
+    {
+      "src": "INVEST.DEC-002",
+      "dst": "INVEST.GLO-001",
+      "type": "depends_on",
+      "weight": 0.8
+    },
+    {
+      "src": "INVEST.DEC-002",
+      "dst": "INVEST.DEC-003",
+      "type": "refines",
+      "weight": 0.7
+    },
+    {
+      "src": "INVEST.DEC-003",
+      "dst": "INVEST.DAT-001",
+      "type": "depends_on",
+      "weight": 0.7
+    },
+    {
+      "src": "INVEST.CON-001",
+      "dst": "INVEST.IDENT-001",
+      "type": "constrained_by",
+      "weight": 0.6
+    },
+    {
+      "src": "INVEST.CON-002",
+      "dst": "INVEST.DAT-001",
+      "type": "constrained_by",
+      "weight": 0.6
+    },
+    {
+      "src": "INVEST.ARC-001",
+      "dst": "INVEST.DEC-001",
+      "type": "constrained_by",
+      "weight": 0.7
+    },
+    {
+      "src": "INVEST.ARC-001",
+      "dst": "INVEST.GOT-001",
+      "type": "constrained_by",
+      "weight": 0.85
+    },
+    {
+      "src": "INVEST.ARC-001",
+      "dst": "INVEST.IDENT-001",
+      "type": "implements",
+      "weight": 0.9
+    },
+    {
+      "src": "INVEST.IMP-001",
+      "dst": "INVEST.IDENT-001",
+      "type": "implements",
+      "weight": 0.7
+    },
+    {
+      "src": "INVEST.DAT-001",
+      "dst": "INVEST.ARC-001",
+      "type": "refines",
+      "weight": 0.8
+    },
+    {
+      "src": "INVEST.OPS-001",
+      "dst": "INVEST.ARC-001",
+      "type": "implements",
+      "weight": 0.75
+    },
+    {
+      "src": "INVEST.GOT-003",
+      "dst": "INVEST.ARC-001",
+      "type": "relates_to",
+      "weight": 0.4
+    },
+    {
+      "src": "INVEST.TODO-001",
+      "dst": "INVEST.IDENT-001",
+      "type": "blocks",
+      "weight": 0.7
+    },
+    {
+      "src": "INVEST.TODO-001",
+      "dst": "INVEST.DEC-001",
+      "type": "caused_by",
+      "weight": 0.8
+    },
+    {
+      "src": "INVEST.GLO-001",
+      "dst": "INVEST.ARC-001",
+      "type": "relates_to",
+      "weight": 0.4
+    }
+  ]
+}
