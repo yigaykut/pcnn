@@ -1,4 +1,4 @@
-# PCNN — Project Context Neural Network
+# PCNN - Project Context Neural Network
 
 Context you earn in one AI coding session dies with that session. The next one
 re-derives the same decisions, walks into the same platform limits, and now and
